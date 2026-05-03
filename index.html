@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeNet - توقع الأرقام</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    h1 { margin-bottom: 10px; font-size: 28px; color: #e94560; }
+    p  { margin-bottom: 20px; color: #aaa; }
+
+    canvas {
+      background: black;
+      border: 3px solid #e94560;
+      border-radius: 12px;
+      cursor: crosshair;
+    }
+
+    .buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+    }
+
+    button {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    #predictBtn {
+      background: #e94560;
+      color: white;
+    }
+    #predictBtn:hover { background: #c73652; }
+
+    #clearBtn {
+      background: #333;
+      color: white;
+    }
+    #clearBtn:hover { background: #555; }
+
+    .result {
+      margin-top: 30px;
+      background: #16213e;
+      border-radius: 12px;
+      padding: 20px 40px;
+      text-align: center;
+      min-width: 250px;
+    }
+    .result .digit {
+      font-size: 80px;
+      font-weight: bold;
+      color: #e94560;
+    }
+    .result .confidence {
+      font-size: 18px;
+      color: #aaa;
+      margin-top: 5px;
+    }
+    .result .loading {
+      font-size: 20px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🔢 توقع الأرقام</h1>
+  <p>ارسم رقم من 0 إلى 9</p>
+
+  <canvas id="canvas" width="280" height="280"></canvas>
+
+  <div class="buttons">
+    <button id="predictBtn">🔍 توقّع</button>
+    <button id="clearBtn">🗑️ مسح</button>
+  </div>
+
+  <div class="result" id="result">
+    <div class="loading">ارسم رقم وابدأ ✏️</div>
+  </div>
+
+<script>
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let drawing = false;
+
+  // إعداد الكانفاس
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 18;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // أحداث الرسم
+  canvas.addEventListener('mousedown', e => { drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
+  canvas.addEventListener('mousemove', e => { if (!drawing) return; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); });
+  canvas.addEventListener('mouseup', () => drawing = false);
+  canvas.addEventListener('mouseleave', () => drawing = false);
+
+  // دعم اللمس (موبايل)
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    drawing = true;
+    ctx.beginPath();
+    ctx.moveTo(t.clientX - rect.left, t.clientY - rect.top);
+  });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(t.clientX - rect.left, t.clientY - rect.top);
+    ctx.stroke();
+  });
+  canvas.addEventListener('touchend', () => drawing = false);
+
+  // مسح الكانفاس
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    document.getElementById('result').innerHTML = '<div class="loading">ارسم رقم وابدأ ✏️</div>';
+  });
+
+  // إرسال الصورة للـ API
+  document.getElementById('predictBtn').addEventListener('click', async () => {
+    document.getElementById('result').innerHTML = '<div class="loading">جاري التوقع... ⏳</div>';
+
+    canvas.toBlob(async blob => {
+      const formData = new FormData();
+      formData.append('file', blob, 'digit.png');
+
+      try {
+        const response = await fetch('/predict', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        document.getElementById('result').innerHTML = `
+          <div class="digit">${data.digit}</div>
+          <div class="confidence">نسبة الثقة: ${data.confidence}%</div>
+        `;
+      } catch (err) {
+        document.getElementById('result').innerHTML = '<div class="loading">❌ حصل خطأ</div>';
+      }
+    }, 'image/png');
+  });
+</script>
+</body>
+</html>

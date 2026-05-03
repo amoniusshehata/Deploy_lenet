@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import FileResponse
 from torchvision import transforms
 from PIL import Image
 import io
@@ -8,6 +9,10 @@ from model import LeNet
 
 app = FastAPI()
 device = torch.device("cpu")
+
+@app.get("/")
+def root():
+    return FileResponse("index.html")
 
 # تحميل الموديل
 checkpoint = torch.load("lenet_mnist.pth", map_location=device)
@@ -22,10 +27,6 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize((0.1307,), (0.3081,))
 ])
-
-@app.get("/")
-def root():
-    return {"message": "LeNet MNIST API is running 🚀"}
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
