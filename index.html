@@ -75,6 +75,10 @@
       font-size: 20px;
       color: #aaa;
     }
+    .result .warning {
+      font-size: 18px;
+      color: #e94560;
+    }
   </style>
 </head>
 <body>
@@ -140,6 +144,17 @@
 
   // إرسال الصورة للـ API
   document.getElementById('predictBtn').addEventListener('click', async () => {
+
+    // التحقق من إن الكانفاس مش فاضي
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    const hasDrawing = Array.from(pixels).some((val, i) => i % 4 !== 3 && val > 10);
+
+    if (!hasDrawing) {
+      document.getElementById('result').innerHTML = '<div class="warning">⚠️ Please draw a digit first!</div>';
+      return;
+    }
+
     document.getElementById('result').innerHTML = '<div class="loading">جاري التوقع... ⏳</div>';
 
     canvas.toBlob(async blob => {
